@@ -1,0 +1,78 @@
+@import "tailwindcss";
+
+/*
+ * Tailwind v4 uses the device color scheme for `dark:` by default.
+ * Gio te perfumo has its own Cream / Noir switch, so dark variants must
+ * follow the `.dark` class rendered by App.tsx instead of the phone/browser
+ * preference. This keeps Admin and Catalog visually consistent in both modes.
+ */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  body {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    background-color: #fcfaf7;
+    color: #1a1a1a;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+  h1, h2, h3, h4, .font-serif {
+    font-family: 'Playfair Display', Georgia, serif;
+  }
+}
+
+/* Sommelier Lounge Noir (Dark Mode Overrides) */
+.dark body {
+  background-color: #0b0b0d;
+  color: #f4f4f5;
+}
+
+.dark .bg-\[\#fcfaf7\] {
+  background-color: #0b0b0d !important;
+}
+
+.dark .bg-\[\#f5f0e8\] {
+  background-color: #141418 !important;
+}
+
+.dark .bg-white {
+  background-color: #1a1a1e !important;
+}
+
+.dark .text-\[\#1a1a1a\] {
+  color: #f4f4f5 !important;
+}
+
+.dark .text-\[\#555\] {
+  color: #a1a1aa !important;
+}
+
+.dark .border-\[\#1a1a1a\]\/10,
+.dark .border-\[\#1a1a1a\]\/15,
+.dark .border-\[\#1a1a1a\]\/20,
+.dark .border-\[\#1a1a1a\]\/30,
+.dark .border-\[\#1a1a1a\] {
+  border-color: rgba(212, 175, 55, 0.22) !important;
+}
+
+.dark .shadow-sm {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.5), 0 1px 2px -1px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Custom Editorial Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f5f0e8;
+}
+.dark ::-webkit-scrollbar-track {
+  background: #141418;
+}
+::-webkit-scrollbar-thumb {
+  background: #c5a059;
+  border-radius: 0px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #a3813e;
+}

@@ -1,0 +1,8 @@
+{
+  "name": "Gio te perfumo",
+  "description": "Asesoría inteligente de fragancias con Giobot. Encuentra el perfume que mejor refleje tu personalidad, gustos y presupuesto.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

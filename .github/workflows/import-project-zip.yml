@@ -1,0 +1,70 @@
+name: Import Gio te Perfumo project ZIP
+
+on:
+  push:
+    branches:
+      - feature/admin-catalog-firebase
+    paths:
+      - remix-gio-te-perfumo-github-ready.zip
+
+permissions:
+  contents: write
+
+jobs:
+  import-project:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/admin-catalog-firebase
+          fetch-depth: 0
+
+      - name: Expand project archive
+        run: |
+          unzip -o remix-gio-te-perfumo-github-ready.zip -d .
+          rm remix-gio-te-perfumo-github-ready.zip
+
+      - name: Reapply Firebase admin integration
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+
+          package = Path('package.json')
+          data = json.loads(package.read_text(encoding='utf-8'))
+          data.setdefault('dependencies', {})['firebase'] = '^11.0.0'
+          package.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+
+          app = Path('src/App.tsx')
+          s = app.read_text(encoding='utf-8')
+          detail = "const PerfumeDetailModal = lazy(() =>\n  import('./components/PerfumeDetailModal').then(m => ({ default: m.PerfumeDetailModal }))\n);"
+          if "./components/AdminAccess" not in s:
+              s = s.replace(detail, detail + "\nconst AdminAccess = lazy(() =>\n  import('./components/AdminAccess').then(m => ({ default: m.AdminAccess }))\n);")
+          s = s.replace("useState<'chat' | 'quiz' | 'catalog' | 'academy' | 'saved' | 'about'>('chat')", "useState<'chat' | 'quiz' | 'catalog' | 'academy' | 'saved' | 'about' | 'admin'>('chat')")
+          if "activeTab === 'admin'" not in s:
+              s = s.replace("          {activeTab === 'about' && <AboutGio />}\n", "          {activeTab === 'about' && <AboutGio />}\n          {activeTab === 'admin' && <AdminAccess />}\n")
+          if '>Administrar<' not in s and 'Administrar\n' not in s:
+              marker = '''        <p className="font-light">\n          "Encuentra la fragancia que habla de ti." © {new Date().getFullYear()} Gio te perfumo. Todos los derechos reservados.\n        </p>'''
+              replacement = marker + '''\n        <button\n          type="button"\n          onClick={() => setActiveTab('admin')}\n          className="mt-2 text-[10px] uppercase tracking-[0.16em] text-[#777] dark:text-[#777] hover:text-[#c5a059] transition-colors"\n        >\n          Administrar\n        </button>'''
+              s = s.replace(marker, replacement)
+          app.write_text(s, encoding='utf-8')
+
+          nav = Path('src/components/Navbar.tsx')
+          n = nav.read_text(encoding='utf-8')
+          n = n.replace("'chat' | 'quiz' | 'catalog' | 'academy' | 'saved' | 'about'", "'chat' | 'quiz' | 'catalog' | 'academy' | 'saved' | 'about' | 'admin'")
+          nav.write_text(n, encoding='utf-8')
+          PY
+
+      - name: Commit imported app
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "Import full Gio te Perfumo app and admin access"
+          git push origin HEAD:feature/admin-catalog-firebase

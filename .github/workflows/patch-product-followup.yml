@@ -1,0 +1,116 @@
+name: Patch Giobot selected product follow-up
+
+on:
+  push:
+    branches:
+      - fix/giobot-product-followup
+    paths:
+      - .github/workflows/patch-product-followup.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/giobot-product-followup
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Apply surgical patch
+        shell: python
+        run: |
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              if old not in text:
+                  raise SystemExit(f'Expected snippet not found in {path}: {old[:120]!r}')
+              if text.count(old) != 1:
+                  raise SystemExit(f'Expected exactly one match in {path}, found {text.count(old)}')
+              p.write_text(text.replace(old, new, 1))
+
+          # 1) Preserve the currently selected perfume inside activeSearch.
+          replace_once(
+              'src/types.ts',
+              "  searchGoal?: string;\n  comparedPerfumeIds?: string[];",
+              "  searchGoal?: string;\n  selectedPerfumeId?: string;\n  comparedPerfumeIds?: string[];"
+          )
+
+          # 2) Understand natural budget phrases like 'tengo 3400'.
+          replace_once(
+              'server.ts',
+              "(?:menos de|en menos de|hasta|maximo|máximo|max|tope de|tope|no mas de|no más de|inferior a|presupuesto de|gastar hasta|puedo gastar hasta|cuento con)",
+              "(?:menos de|en menos de|hasta|maximo|máximo|max|tope de|tope|no mas de|no más de|inferior a|presupuesto de|gastar hasta|puedo gastar hasta|cuento con|tengo)"
+          )
+
+          # 3) Add follow-up recognition for an already selected product.
+          anchor = "function isComparisonFollowUpText(text: string): boolean {\n  const norm = normalizeSearchText(text);\n  return (\n    norm.includes('de los dos') ||\n    norm.includes('entre los dos') ||\n    norm.includes('entre ambos') ||\n    norm.includes('cual de los dos') ||\n    norm.includes('cual es mas') ||\n    norm.includes('cual dura mas') ||\n    norm.includes('cual proyecta mas') ||\n    norm.includes('mas fresco') ||\n    norm.includes('mas duradero') ||\n    norm.includes('para diario') ||\n    norm.includes('para el diario') ||\n    norm.includes('para calor') ||\n    norm.includes('para oficina')\n  );\n}\n"
+          helper = anchor + "\nfunction isProductFollowUpText(text: string): boolean {\n  const norm = normalizeSearchText(text);\n  return (\n    norm.includes('lo quiero') ||\n    norm.includes('lo compro') ||\n    norm.includes('me interesa') ||\n    norm.includes('ese quiero') ||\n    norm.includes('ese me interesa') ||\n    norm.includes('quiero ese') ||\n    norm.includes('cuanto me falta') ||\n    norm.includes('me alcanza') ||\n    norm.includes('tengo ') ||\n    /\\b[0-9]{3,5}\\b/.test(norm)\n  );\n}\n"
+          replace_once('server.ts', anchor, helper)
+
+          # 4) Carry selectedPerfumeId while reconstructing the active search.
+          replace_once(
+              'server.ts',
+              "    desiredPerformance: current.desiredPerformance || current.activeSearch?.desiredPerformance,\n    comparedPerfumeIds: current.activeSearch?.comparedPerfumeIds || [],",
+              "    desiredPerformance: current.desiredPerformance || current.activeSearch?.desiredPerformance,\n    selectedPerfumeId: current.activeSearch?.selectedPerfumeId,\n    comparedPerfumeIds: current.activeSearch?.comparedPerfumeIds || [],"
+          )
+
+          # 5) When a direct product is named, remember it after criteria extraction.
+          replace_once(
+              'server.ts',
+              "      if (detection.intent === 'COMPARISON' && detection.mentionedPerfumes.length >= 2) {\n        criteria.activeSearch = {\n          ...(criteria.activeSearch || {}),\n          comparedPerfumeIds: detection.mentionedPerfumes.slice(0, 2).map(p => p.id),\n        };\n      }",
+              "      if (detection.intent === 'PRODUCT_QUESTION' && detection.mentionedPerfumes.length >= 1) {\n        criteria.activeSearch = {\n          ...(criteria.activeSearch || {}),\n          selectedPerfumeId: detection.mentionedPerfumes[0].id,\n        };\n      }\n\n      if (detection.intent === 'COMPARISON' && detection.mentionedPerfumes.length >= 2) {\n        criteria.activeSearch = {\n          ...(criteria.activeSearch || {}),\n          selectedPerfumeId: undefined,\n          comparedPerfumeIds: detection.mentionedPerfumes.slice(0, 2).map(p => p.id),\n        };\n      }"
+          )
+
+          # 6) Resolve short follow-ups ('Lo quiero', 'Tengo 3400') against that selected product.
+          replace_once(
+              'server.ts',
+              "  let intent = detected.intent;\n  let mentionedPerfumes = detected.mentionedPerfumes;\n\n  const activeComparisonPerfumes = (criteria.activeSearch?.comparedPerfumeIds || [])",
+              "  let intent = detected.intent;\n  let mentionedPerfumes = detected.mentionedPerfumes;\n\n  const activeSelectedPerfume = criteria.activeSearch?.selectedPerfumeId\n    ? catalog.find(p => p.id === criteria.activeSearch?.selectedPerfumeId)\n    : undefined;\n\n  if (activeSelectedPerfume && mentionedPerfumes.length === 0 && isProductFollowUpText(userText) && !isNewSearchInitiation(userText)) {\n    intent = 'PRODUCT_QUESTION';\n    mentionedPerfumes = [activeSelectedPerfume];\n  }\n\n  const activeComparisonPerfumes = (criteria.activeSearch?.comparedPerfumeIds || [])"
+          )
+
+          # 7) At the endpoint, deterministic product handling must also apply to short follow-ups.
+          replace_once(
+              'server.ts',
+              "    const activeComparisonIds = accumulatedCriteria.activeSearch?.comparedPerfumeIds || [];\n    const isComparisonFollowUp =",
+              "    const activeSelectedPerfumeId = accumulatedCriteria.activeSearch?.selectedPerfumeId;\n    const isProductFollowUp =\n      detectedIntent === 'ACTIVE_SEARCH_CONTINUATION' &&\n      Boolean(activeSelectedPerfumeId) &&\n      isProductFollowUpText(lastUserMessage) &&\n      !isNewSearchInitiation(lastUserMessage);\n    const shouldHandleAsProductQuestion = isDirectProductQuestion || isProductFollowUp;\n\n    const activeComparisonIds = accumulatedCriteria.activeSearch?.comparedPerfumeIds || [];\n    const isComparisonFollowUp ="
+          )
+
+          text = Path('server.ts').read_text()
+          text = text.replace(
+              "if (isDirectProductQuestion || shouldHandleAsComparison) {",
+              "if (shouldHandleAsProductQuestion || shouldHandleAsComparison) {"
+          )
+          text = text.replace(
+              "if (!isRecommendationIntent || isDirectProductQuestion || shouldHandleAsComparison || isEducational) {",
+              "if (!isRecommendationIntent || shouldHandleAsProductQuestion || shouldHandleAsComparison || isEducational) {"
+          )
+          text = text.replace(
+              "!isDirectProductQuestion &&\n      !shouldHandleAsComparison",
+              "!shouldHandleAsProductQuestion &&\n      !shouldHandleAsComparison"
+          )
+          Path('server.ts').write_text(text)
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: TypeScript check
+        run: npm run lint
+      - name: Build
+        run: npm run build
+      - name: Commit patch
+        run: |
+          git config user.name "gioteautomatizo-arch"
+          git config user.email "gioteautomatizo@gmail.com"
+          git add server.ts src/types.ts
+          if git diff --cached --quiet; then
+            echo "No code changes to commit"
+          else
+            git commit -m "fix: keep selected perfume across follow-ups"
+            git push origin HEAD:fix/giobot-product-followup
+          fi

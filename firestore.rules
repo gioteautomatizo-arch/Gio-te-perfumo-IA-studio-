@@ -1,0 +1,34 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.uid == 'PFpJ0gKykIb7KLz9WIxLXhyNL4a2';
+    }
+
+    match /perfumes/{perfumeId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /businessProfile/{docId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /catalogMeta/{docId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /perfume_likes/{likeId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

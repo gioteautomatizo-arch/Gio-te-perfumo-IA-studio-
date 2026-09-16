@@ -1,0 +1,20 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+
+# Keep GitHub lightweight: original image exports are retained outside Git.
+/*.png
+/*.webp
+!/*.optimized.webp
+!/Giobot Sommelier.webp
+!/Giobot Sommelier.png
+!/bade'e al oud honor & glory lattafa.png
+!/dolce & gabanna ligth blue.png
+
+# Source library archive is not required at runtime.
+Biblioteca_Olfativa_Gio_te_perfumo_V2_PDF.zip

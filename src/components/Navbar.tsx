@@ -1,14 +1,10 @@
 import React from 'react';
 import {
   Search,
-  BookOpen,
   Heart,
-  Info,
   Compass,
-  MessageSquare,
   Moon,
   Sun,
-  Sparkles,
   Bot,
 } from 'lucide-react';
 
@@ -55,7 +51,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="flex items-center justify-between py-2.5 sm:py-3.5 gap-2">
           {/* Logo & Brand Name */}
           <div
-            onClick={onOpenGiobot}
+            onClick={() => setActiveTab('catalog')}
             className="cursor-pointer group flex items-center gap-2 sm:gap-2.5 min-w-0"
             role="button"
             tabIndex={0}
@@ -75,18 +71,6 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Desktop Navigation Links */}
           <nav className="hidden md:flex items-center space-x-4 lg:space-x-6 text-[11px] uppercase tracking-widest font-semibold">
-            <button
-              onClick={onOpenGiobot}
-              className={`pb-1 transition-colors flex items-center gap-1.5 whitespace-nowrap ${
-                activeTab === 'chat'
-                  ? 'text-[#1a1a1a] dark:text-[#f4f4f5] border-b-2 border-[#c5a059] font-bold'
-                  : 'text-[#1a1a1a]/70 dark:text-[#a1a1aa] hover:text-[#c5a059]'
-              }`}
-            >
-              <MessageSquare className="w-3.5 h-3.5 text-[#c5a059]" />
-              <span>Giobot</span>
-            </button>
-
             <button
               onClick={() => setActiveTab('catalog')}
               className={`pb-1 transition-colors flex items-center gap-1.5 whitespace-nowrap ${
@@ -111,29 +95,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span>Test Olfativo</span>
             </button>
 
-            <button
-              onClick={() => setActiveTab('academy')}
-              className={`pb-1 transition-colors flex items-center gap-1.5 whitespace-nowrap ${
-                activeTab === 'academy'
-                  ? 'text-[#1a1a1a] dark:text-[#f4f4f5] border-b-2 border-[#c5a059] font-bold'
-                  : 'text-[#1a1a1a]/70 dark:text-[#a1a1aa] hover:text-[#c5a059]'
-              }`}
-            >
-              <BookOpen className="w-3.5 h-3.5 text-[#c5a059]" />
-              <span>Academia</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('about')}
-              className={`pb-1 transition-colors flex items-center gap-1.5 whitespace-nowrap ${
-                activeTab === 'about'
-                  ? 'text-[#1a1a1a] dark:text-[#f4f4f5] border-b-2 border-[#c5a059] font-bold'
-                  : 'text-[#1a1a1a]/70 dark:text-[#a1a1aa] hover:text-[#c5a059]'
-              }`}
-            >
-              <Info className="w-3.5 h-3.5 text-[#c5a059]" />
-              <span>Nosotros</span>
-            </button>
           </nav>
 
           {/* Right Action Buttons */}
@@ -175,18 +136,6 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Mobile Horizontal Navigation Bar (Mobile-First touch-friendly) */}
         <nav className="flex md:hidden items-center py-2 border-t border-[#1a1a1a]/10 dark:border-[#c5a059]/20 overflow-x-auto no-scrollbar scroll-smooth gap-1.5 text-[11px] uppercase tracking-wider font-semibold">
           <button
-            onClick={onOpenGiobot}
-            className={`px-3.5 py-2 whitespace-nowrap border transition-all flex items-center gap-1.5 min-h-[40px] shrink-0 ${
-              activeTab === 'chat'
-                ? 'bg-[#1a1a1a] dark:bg-[#c5a059] text-[#fcfaf7] dark:text-[#1a1a1a] border-[#1a1a1a] dark:border-[#c5a059] font-bold shadow-xs'
-                : 'bg-[#f5f0e8] dark:bg-[#141418] text-[#1a1a1a] dark:text-[#f4f4f5] border-[#1a1a1a]/10 dark:border-[#c5a059]/20'
-            }`}
-          >
-            <Sparkles className="w-3.5 h-3.5 text-[#c5a059] dark:text-[#1a1a1a]" />
-            <span>Giobot</span>
-          </button>
-
-          <button
             onClick={() => setActiveTab('catalog')}
             className={`px-3.5 py-2 whitespace-nowrap border transition-all min-h-[40px] shrink-0 ${
               activeTab === 'catalog'
@@ -208,27 +157,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span>Test Olfativo</span>
           </button>
 
-          <button
-            onClick={() => setActiveTab('academy')}
-            className={`px-3.5 py-2 whitespace-nowrap border transition-all min-h-[40px] shrink-0 ${
-              activeTab === 'academy'
-                ? 'bg-[#1a1a1a] dark:bg-[#c5a059] text-[#fcfaf7] dark:text-[#1a1a1a] border-[#1a1a1a] dark:border-[#c5a059] font-bold shadow-xs'
-                : 'bg-[#f5f0e8] dark:bg-[#141418] text-[#1a1a1a] dark:text-[#f4f4f5] border-[#1a1a1a]/10 dark:border-[#c5a059]/20'
-            }`}
-          >
-            <span>Academia</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('about')}
-            className={`px-3.5 py-2 whitespace-nowrap border transition-all min-h-[40px] shrink-0 ${
-              activeTab === 'about'
-                ? 'bg-[#1a1a1a] dark:bg-[#c5a059] text-[#fcfaf7] dark:text-[#1a1a1a] border-[#1a1a1a] dark:border-[#c5a059] font-bold shadow-xs'
-                : 'bg-[#f5f0e8] dark:bg-[#141418] text-[#1a1a1a] dark:text-[#f4f4f5] border-[#1a1a1a]/10 dark:border-[#c5a059]/20'
-            }`}
-          >
-            <span>Nosotros</span>
-          </button>
         </nav>
       </div>
     </header>

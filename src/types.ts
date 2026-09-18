@@ -116,6 +116,7 @@ export interface DurableProfile {
 }
 
 export interface ActiveSearch {
+  preferredCategory?: Perfume['category'];
   occasion?: string;
   maxBudgetMXN?: number;
   minBudgetMXN?: number;
@@ -133,6 +134,7 @@ export interface ActiveSearch {
 }
 
 export interface UserCriteria {
+  preferredCategory?: Perfume['category'];
   genderPreference?: string;
   maxBudgetMXN?: number;
   minBudgetMXN?: number;

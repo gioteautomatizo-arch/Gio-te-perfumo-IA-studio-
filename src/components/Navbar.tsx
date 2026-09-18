@@ -18,6 +18,7 @@ interface NavbarProps {
   savedCount: number;
   theme: 'cream' | 'noir';
   onToggleTheme: () => void;
+  onOpenGiobot: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -26,6 +27,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   savedCount,
   theme,
   onToggleTheme,
+  onOpenGiobot,
 }) => {
   return (
     <header className="sticky top-0 z-40 bg-[#fcfaf7]/98 dark:bg-[#0b0b0d]/98 backdrop-blur-md border-b border-[#1a1a1a]/10 dark:border-[#c5a059]/25 text-[#1a1a1a] dark:text-[#f4f4f5] shadow-xs transition-colors duration-300">
@@ -53,7 +55,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="flex items-center justify-between py-2.5 sm:py-3.5 gap-2">
           {/* Logo & Brand Name */}
           <div
-            onClick={() => setActiveTab('chat')}
+            onClick={onOpenGiobot}
             className="cursor-pointer group flex items-center gap-2 sm:gap-2.5 min-w-0"
             role="button"
             tabIndex={0}
@@ -74,7 +76,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Desktop Navigation Links */}
           <nav className="hidden md:flex items-center space-x-4 lg:space-x-6 text-[11px] uppercase tracking-widest font-semibold">
             <button
-              onClick={() => setActiveTab('chat')}
+              onClick={onOpenGiobot}
               className={`pb-1 transition-colors flex items-center gap-1.5 whitespace-nowrap ${
                 activeTab === 'chat'
                   ? 'text-[#1a1a1a] dark:text-[#f4f4f5] border-b-2 border-[#c5a059] font-bold'
@@ -173,7 +175,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Mobile Horizontal Navigation Bar (Mobile-First touch-friendly) */}
         <nav className="flex md:hidden items-center py-2 border-t border-[#1a1a1a]/10 dark:border-[#c5a059]/20 overflow-x-auto no-scrollbar scroll-smooth gap-1.5 text-[11px] uppercase tracking-wider font-semibold">
           <button
-            onClick={() => setActiveTab('chat')}
+            onClick={onOpenGiobot}
             className={`px-3.5 py-2 whitespace-nowrap border transition-all flex items-center gap-1.5 min-h-[40px] shrink-0 ${
               activeTab === 'chat'
                 ? 'bg-[#1a1a1a] dark:bg-[#c5a059] text-[#fcfaf7] dark:text-[#1a1a1a] border-[#1a1a1a] dark:border-[#c5a059] font-bold shadow-xs'

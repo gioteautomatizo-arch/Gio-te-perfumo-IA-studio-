@@ -62,6 +62,13 @@ export function checkHardConstraints(perfume: Perfume, criteria: UserCriteria): 
     };
   }
 
+  if (
+    criteria.preferredCategory &&
+    normalizeText(perfume.category || '') !== normalizeText(criteria.preferredCategory)
+  ) {
+    return { eligible: false, reason: `No pertenece a la categoría ${criteria.preferredCategory}` };
+  }
+
   // 2. RESTRICCIÓN DURA: Presupuesto (evaluado contra el precio efectivo vigente)
   const effectivePrice = getEffectivePrice(perfume);
   if (criteria.maxBudgetMXN && criteria.maxBudgetMXN > 0) {

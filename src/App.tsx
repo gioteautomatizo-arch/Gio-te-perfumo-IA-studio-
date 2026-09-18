@@ -13,14 +13,8 @@ const QuizAdvisor = lazy(() =>
 const KnowledgeBase = lazy(() =>
   import('./components/KnowledgeBase').then(m => ({ default: m.KnowledgeBase }))
 );
-const Academy = lazy(() =>
-  import('./components/Academy').then(m => ({ default: m.Academy }))
-);
 const SavedProfile = lazy(() =>
   import('./components/SavedProfile').then(m => ({ default: m.SavedProfile }))
-);
-const AboutGio = lazy(() =>
-  import('./components/AboutGio').then(m => ({ default: m.AboutGio }))
 );
 const PerfumeDetailModal = lazy(() =>
   import('./components/PerfumeDetailModal').then(m => ({ default: m.PerfumeDetailModal }))
@@ -101,6 +95,10 @@ export default function App() {
     setModalPerfume(sharedPerfume);
   }, [catalogVersion]);
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [activeTab]);
+
   const toggleTheme = () => {
     setTheme(prev => (prev === 'cream' ? 'noir' : 'cream'));
   };
@@ -143,6 +141,28 @@ export default function App() {
       />
 
       <main className="flex-1 pb-12">
+        {(activeTab === 'catalog' || activeTab === 'saved') && (
+          <div className="max-w-7xl mx-auto px-3 sm:px-6 pt-3">
+            <button
+              type="button"
+              onClick={() => setChatOpen(true)}
+              className="w-full flex items-center justify-between gap-3 border border-[#c5a059]/45 bg-[#f5f0e8] dark:bg-[#141418] px-4 py-3 text-left shadow-sm hover:border-[#c5a059] transition-colors"
+            >
+              <span className="min-w-0">
+                <span className="block text-[10px] uppercase tracking-[0.18em] font-bold text-[#c5a059]">
+                  Asesoría personalizada
+                </span>
+                <span className="block text-sm font-serif italic font-bold text-[#1a1a1a] dark:text-[#f4f4f5]">
+                  ¿No sabes cuál elegir? Pregúntale a Giobot
+                </span>
+              </span>
+              <span className="shrink-0 rounded-full bg-[#1a1a1a] dark:bg-[#c5a059] text-[#c5a059] dark:text-[#1a1a1a] px-3 py-2 text-[10px] uppercase tracking-wider font-bold">
+                Consultar
+              </span>
+            </button>
+          </div>
+        )}
+
         <Suspense fallback={<TabLoadingFallback />}>
           {activeTab === 'quiz' && (
             <QuizAdvisor
@@ -164,8 +184,6 @@ export default function App() {
             />
           )}
 
-          {activeTab === 'academy' && <Academy />}
-
           {activeTab === 'saved' && (
             <SavedProfile
               savedPerfumes={savedPerfumes}
@@ -176,7 +194,6 @@ export default function App() {
             />
           )}
 
-          {activeTab === 'about' && <AboutGio />}
           {activeTab === 'admin' && <AdminAccess />}
 
           {modalPerfume && (

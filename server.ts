@@ -17,7 +17,7 @@ import {
 const app = express();
 const PORT = 3000;
 
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
@@ -504,6 +504,7 @@ function updateCriteriaWithText(
   // Inicializar o recuperar activeSearch (búsqueda y contexto actual)
   const isAwaitingSecond = Boolean(current.activeSearch?.awaitingSecondComparisonPerfume);
   let active: ActiveSearch = {
+    preferredCategory: current.preferredCategory || current.activeSearch?.preferredCategory,
     occasion: current.occasion || current.activeSearch?.occasion,
     maxBudgetMXN: current.maxBudgetMXN ?? current.activeSearch?.maxBudgetMXN,
     minBudgetMXN: current.minBudgetMXN ?? current.activeSearch?.minBudgetMXN,
@@ -594,6 +595,13 @@ function updateCriteriaWithText(
 
   // 7. Weather / Climate (Búsqueda activa)
   const norm = text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (/\barabe(?:s)?\b/.test(norm)) {
+    active.preferredCategory = 'Árabe';
+  } else if (/\bdisenador(?:es)?\b/.test(norm)) {
+    active.preferredCategory = 'Diseñador';
+  } else if (/\bnicho\b/.test(norm)) {
+    active.preferredCategory = 'Nicho';
+  }
   if (norm.includes('calor') || norm.includes('verano') || norm.includes('calido')) {
     active.weather = 'Calor';
   } else if (norm.includes('frio') || norm.includes('invierno')) {
@@ -620,6 +628,7 @@ function updateCriteriaWithText(
   updated.desiredDuration = active.desiredDuration;
   updated.desiredProjection = active.desiredProjection;
   updated.desiredPerformance = active.desiredPerformance;
+  updated.preferredCategory = active.preferredCategory;
 
   return updated;
 }
@@ -1389,19 +1398,27 @@ Sigue estrictamente las 20 reglas del Manual de Giobot y la Filosofía de Gio te
 // Interactive Chat Endpoint
 app.post('/api/giobot/chat', async (req, res) => {
   try {
-    const { messages, userProfile, conversationProfile, catalogPricing } = req.body as {
+    const { messages, userProfile, conversationProfile, catalogSnapshot } = req.body as {
       messages: { role: 'user' | 'assistant'; text: string }[];
       userProfile?: DiscoveryQuizAnswers;
       conversationProfile?: UserCriteria;
-      catalogPricing?: LiveCatalogPricingItem[];
+      catalogSnapshot?: Perfume[];
     };
 
     if (!messages || messages.length === 0) {
       return res.status(400).json({ error: 'Se requiere al menos un mensaje.' });
     }
 
-    // Catálogo seguro por request con precios y stock vivos de Firestore
-    const requestCatalog = applyLiveCatalogPricing(PERFUMES_DATABASE, catalogPricing);
+    const validSnapshot = Array.isArray(catalogSnapshot)
+      ? catalogSnapshot.filter(p =>
+          p && typeof p.id === 'string' && typeof p.name === 'string' &&
+          typeof p.brand === 'string' && typeof p.priceMXN === 'number' &&
+          Array.isArray(p.topNotes) && Array.isArray(p.baseNotes)
+        )
+      : [];
+    const requestCatalog = validSnapshot.length > 0
+      ? validSnapshot
+      : applyLiveCatalogPricing(PERFUMES_DATABASE);
 
     const lastUserMessage = messages[messages.length - 1].text;
 
@@ -1447,6 +1464,13 @@ app.post('/api/giobot/chat', async (req, res) => {
       isAlternatives ||
       isExplicitRecRequest ||
       (detectedIntent === 'ACTIVE_SEARCH_CONTINUATION' && hasSufficientCriteriaForRecommendation(accumulatedCriteria));
+
+    const normalizedLastMessage = normalizeSearchText(lastUserMessage);
+    const requestedCategory = accumulatedCriteria.preferredCategory;
+    const asksCategoryRanking = Boolean(
+      requestedCategory &&
+      /(mayor duracion|dura mas|mas duradero|mejor fijacion|recomienda|recomendacion|cuales|opciones)/.test(normalizedLastMessage)
+    );
 
     let resultJson: {
       replyText: string;
@@ -1516,6 +1540,7 @@ RESPONDE EXCLUSIVAMENTE EN FORMATO JSON VÁLIDO CON ESTA ESTRUCTURA:
   "replyText": "Tu respuesta conversacional con el tono cálido, profesional, respetuoso y honesto de Giobot.",
   "extractedCriteria": {
     "genderPreference": "Caballero | Dama | Unisex | Todos",
+    "preferredCategory": "Árabe | Diseñador | Nicho",
     "maxBudgetMXN": 1500,
     "occasion": "Fiesta de gala",
     "olfactoryPreferences": ["fresco", "cítrico"],
@@ -1547,6 +1572,7 @@ RESPONDE EXCLUSIVAMENTE EN FORMATO JSON VÁLIDO CON ESTA ESTRUCTURA:
                   type: Type.OBJECT,
                   properties: {
                     genderPreference: { type: Type.STRING },
+                    preferredCategory: { type: Type.STRING },
                     maxBudgetMXN: { type: Type.NUMBER },
                     occasion: { type: Type.STRING },
                     olfactoryPreferences: {
@@ -1598,6 +1624,38 @@ RESPONDE EXCLUSIVAMENTE EN FORMATO JSON VÁLIDO CON ESTA ESTRUCTURA:
       resultJson = generateLocalGiobotResponse(lastUserMessage, accumulatedCriteria, messages, requestCatalog);
     }
 
+    if (asksCategoryRanking && requestedCategory) {
+      const eligible = requestCatalog
+        .filter(p => checkHardConstraints(p, accumulatedCriteria).eligible)
+        .sort((a, b) =>
+          (b.ratings?.durationRating || 0) - (a.ratings?.durationRating || 0) ||
+          (b.ratings?.projectionRating || 0) - (a.ratings?.projectionRating || 0)
+        )
+        .slice(0, 3);
+
+      if (eligible.length > 0) {
+        const detail = eligible
+          .map((p, index) => `${index + 1}. **${p.brand} ${p.name}** — ${p.duration}; fijación ${p.ratings?.durationRating || 'sin calificación'}/10.`)
+          .join('\n');
+        resultJson = {
+          replyText: `Según las fichas vigentes de nuestro catálogo, los perfumes **${requestedCategory.toLowerCase()}s** con mayor duración son:\n\n${detail}\n\nLa duración puede variar según la piel, el clima y la cantidad aplicada. ¿Quieres que compare sus notas, precio y ocasión de uso?`,
+          extractedCriteria: accumulatedCriteria,
+          recommendedPerfumes: eligible.map(p => ({
+            id: p.id,
+            whyGiobotRecommends: `${p.duration} de duración estimada y ${p.ratings?.durationRating || 'alto rendimiento'}/10 en fijación según su ficha.`,
+          })),
+          quickReplies: ['Comparar sus notas', '¿Cuál conviene para diario?', 'Ver precios'],
+        };
+      } else {
+        resultJson = {
+          replyText: `Ahora mismo no encuentro perfumes de categoría **${requestedCategory}** disponibles que cumplan con los demás filtros de tu búsqueda.`,
+          extractedCriteria: accumulatedCriteria,
+          recommendedPerfumes: [],
+          quickReplies: ['Quitar filtros', 'Ver todo el catálogo'],
+        };
+      }
+    }
+
     // Preguntas directas y comparaciones se resuelven de forma determinista con el catálogo vivo.
     // Así Gemini no puede cambiar de intención, reinyectar un presupuesto viejo ni omitir uno de los productos.
     if (shouldHandleAsProductQuestion || shouldHandleAsComparison) {
@@ -1620,14 +1678,15 @@ RESPONDE EXCLUSIVAMENTE EN FORMATO JSON VÁLIDO CON ESTA ESTRUCTURA:
     // CRITICAL GUARDRAIL:
     // If the user is asking a direct question about a product, comparing perfumes, or asking an educational question,
     // NEVER attach unsolicited recommendation cards!
-    if (!isRecommendationIntent || shouldHandleAsProductQuestion || shouldHandleAsComparison || isEducational) {
+    const effectiveRecommendationIntent = isRecommendationIntent || asksCategoryRanking;
+    if (!effectiveRecommendationIntent || shouldHandleAsProductQuestion || shouldHandleAsComparison || isEducational) {
       resultJson.recommendedPerfumes = [];
     }
 
     // Auto-generate recommendations ONLY if this is a genuine recommendation intent AND rawList is empty
     let rawList = resultJson.recommendedPerfumes || [];
     if (
-      isRecommendationIntent &&
+      effectiveRecommendationIntent &&
       !shouldHandleAsProductQuestion &&
       !shouldHandleAsComparison &&
       !isEducational &&
@@ -1645,7 +1704,7 @@ RESPONDE EXCLUSIVAMENTE EN FORMATO JSON VÁLIDO CON ESTA ESTRUCTURA:
     const recommendedPerfumes: CompatibilityResult[] = [];
 
     if (
-      isRecommendationIntent &&
+      effectiveRecommendationIntent &&
       !shouldHandleAsProductQuestion &&
       !shouldHandleAsComparison &&
       !isEducational &&
@@ -1683,7 +1742,7 @@ RESPONDE EXCLUSIVAMENTE EN FORMATO JSON VÁLIDO CON ESTA ESTRUCTURA:
 
       // If all passed filters are below the count or empty, fill with top eligible from catalog
       if (
-        isRecommendationIntent &&
+        effectiveRecommendationIntent &&
         !isDirectProductQuestion &&
         !shouldHandleAsComparison &&
         !isEducational &&
@@ -1696,8 +1755,12 @@ RESPONDE EXCLUSIVAMENTE EN FORMATO JSON VÁLIDO CON ESTA ESTRUCTURA:
         });
       }
 
-      // Sort descending by exact deterministic compatibility score
-      recommendedPerfumes.sort((a, b) => b.compatibilityScore - a.compatibilityScore);
+      // Preserve the requested ranking criterion. Otherwise use compatibility.
+      recommendedPerfumes.sort((a, b) =>
+        asksCategoryRanking
+          ? (b.perfume.ratings?.durationRating || 0) - (a.perfume.ratings?.durationRating || 0)
+          : b.compatibilityScore - a.compatibilityScore
+      );
 
       // Ensure slight realistic descending differentiation if identical
       recommendedPerfumes.forEach((rec, idx) => {

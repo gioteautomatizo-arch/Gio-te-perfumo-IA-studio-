@@ -22,6 +22,8 @@ interface GiobotChatProps {
   userProfile?: DiscoveryQuizAnswers;
   onStartQuiz: () => void;
   initialQuery?: string;
+  initialQueryKey?: number;
+  compact?: boolean;
 }
 
 const GiobotAvatar: React.FC<{ size?: 'header' | 'message' }> = ({ size = 'message' }) => {
@@ -266,6 +268,8 @@ export const GiobotChat: React.FC<GiobotChatProps> = ({
   userProfile,
   onStartQuiz,
   initialQuery,
+  initialQueryKey = 0,
+  compact = false,
 }) => {
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     const stored = getStoredGiobotSession();
@@ -280,7 +284,7 @@ export const GiobotChat: React.FC<GiobotChatProps> = ({
   });
 
   const chatEndRef = useRef<HTMLDivElement>(null);
-  const sentInitialRef = useRef<string | null>(null);
+  const sentInitialRef = useRef<number | null>(null);
 
   useEffect(() => {
     try {
@@ -297,11 +301,11 @@ export const GiobotChat: React.FC<GiobotChatProps> = ({
   }, [messages, conversationProfile]);
 
   useEffect(() => {
-    if (initialQuery && initialQuery !== sentInitialRef.current) {
-      sentInitialRef.current = initialQuery;
+    if (initialQuery && initialQueryKey !== sentInitialRef.current) {
+      sentInitialRef.current = initialQueryKey;
       handleSendText(initialQuery);
     }
-  }, [initialQuery]);
+  }, [initialQuery, initialQueryKey]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -439,7 +443,9 @@ export const GiobotChat: React.FC<GiobotChatProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-6.5rem)] max-w-5xl mx-auto p-2 sm:p-4 animate-fade-in text-[#1a1a1a]">
+    <div className={`flex flex-col min-h-0 animate-fade-in text-[#1a1a1a] ${
+      compact ? 'h-full w-full p-2 sm:p-3' : 'h-[calc(100vh-6.5rem)] max-w-5xl mx-auto p-2 sm:p-4'
+    }`}>
       <div className="bg-[#f5f0e8] border border-[#1a1a1a]/10 px-3.5 py-2.5 sm:px-4 sm:py-3 mb-3 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-3">
           <div className="relative">

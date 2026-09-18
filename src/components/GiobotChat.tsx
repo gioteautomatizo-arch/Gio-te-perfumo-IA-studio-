@@ -243,6 +243,7 @@ function sanitizeConversationProfileForNewContext(
     ...profile,
     durableProfile: profile.durableProfile,
     activeSearch: {},
+    preferredCategory: undefined,
     occasion: undefined,
     maxBudgetMXN: undefined,
     minBudgetMXN: undefined,
@@ -367,14 +368,7 @@ export const GiobotChat: React.FC<GiobotChatProps> = ({
         ? sanitizeConversationProfileForNewContext(conversationProfile)
         : conversationProfile;
 
-      const catalogPricing = PERFUMES_DATABASE.map(p => ({
-        id: p.id,
-        priceMXN: p.priceMXN,
-        promoActive: p.promoActive ?? false,
-        promoPriceMXN: p.promoPriceMXN ?? null,
-        promoLabel: p.promoLabel ?? '',
-        stockStatus: p.stockStatus ?? 'Disponible',
-      }));
+      const catalogSnapshot = PERFUMES_DATABASE;
 
       const res = await fetch('/api/giobot/chat', {
         method: 'POST',
@@ -383,7 +377,7 @@ export const GiobotChat: React.FC<GiobotChatProps> = ({
           messages: historyForApi,
           userProfile,
           conversationProfile: profileForApi,
-          catalogPricing,
+          catalogSnapshot,
         }),
       });
 

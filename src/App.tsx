@@ -1,6 +1,6 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { Navbar } from './components/Navbar';
-import { GiobotChat } from './components/GiobotChat';
+import { FloatingGiobot } from './components/FloatingGiobot';
 import { PerfumeCommerceActions } from './components/PerfumeCommerceActions';
 import { Perfume } from './types';
 import { PERFUMES_DATABASE } from './data/perfumes';
@@ -39,7 +39,7 @@ const TabLoadingFallback = () => (
 );
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'chat' | 'quiz' | 'catalog' | 'academy' | 'saved' | 'about' | 'admin'>('chat');
+  const [activeTab, setActiveTab] = useState<'chat' | 'quiz' | 'catalog' | 'academy' | 'saved' | 'about' | 'admin'>('catalog');
   const [theme, setTheme] = useState<'cream' | 'noir'>(() => {
     try {
       return (localStorage.getItem('gio_theme') as 'cream' | 'noir') || 'cream';
@@ -59,6 +59,8 @@ export default function App() {
 
   const [modalPerfume, setModalPerfume] = useState<Perfume | null>(null);
   const [initialChatQuery, setInitialChatQuery] = useState<string | undefined>(undefined);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatRequestId, setChatRequestId] = useState(0);
   const [catalogVersion, setCatalogVersion] = useState(0);
 
   useEffect(() => {
@@ -116,12 +118,15 @@ export default function App() {
 
   const handleConsultGiobotAboutPerfume = (perfume: Perfume) => {
     setInitialChatQuery(`Hola Giobot, me llama la atención el perfume ${perfume.brand} ${perfume.name}. ¿Me podrías explicar sus notas principales, para qué ocasiones me conviene y con qué personalidad encaja?`);
-    setActiveTab('chat');
+    setChatRequestId(id => id + 1);
+    setModalPerfume(null);
+    setChatOpen(true);
   };
 
   const handleConsultGiobotWithQuizSummary = (summary: string) => {
     setInitialChatQuery(summary);
-    setActiveTab('chat');
+    setChatRequestId(id => id + 1);
+    setChatOpen(true);
   };
 
   return (
@@ -134,20 +139,10 @@ export default function App() {
         savedCount={savedPerfumes.length}
         theme={theme}
         onToggleTheme={toggleTheme}
+        onOpenGiobot={() => setChatOpen(true)}
       />
 
       <main className="flex-1 pb-12">
-        {activeTab === 'chat' && (
-          <GiobotChat
-            key={`chat-${catalogVersion}`}
-            onOpenDetail={setModalPerfume}
-            onToggleSave={handleToggleSave}
-            savedPerfumeIds={savedPerfumes.map(p => p.id)}
-            onStartQuiz={() => setActiveTab('quiz')}
-            initialQuery={initialChatQuery}
-          />
-        )}
-
         <Suspense fallback={<TabLoadingFallback />}>
           {activeTab === 'quiz' && (
             <QuizAdvisor
@@ -198,6 +193,24 @@ export default function App() {
           )}
         </Suspense>
       </main>
+
+      <FloatingGiobot
+        isOpen={chatOpen}
+        onOpen={() => setChatOpen(true)}
+        onClose={() => setChatOpen(false)}
+        onOpenDetail={perfume => {
+          setModalPerfume(perfume);
+          setChatOpen(false);
+        }}
+        onToggleSave={handleToggleSave}
+        savedPerfumeIds={savedPerfumes.map(p => p.id)}
+        onStartQuiz={() => {
+          setActiveTab('quiz');
+          setChatOpen(false);
+        }}
+        initialQuery={initialChatQuery}
+        initialQueryKey={chatRequestId}
+      />
 
       <footer className="bg-[#f5f0e8] dark:bg-[#141418] border-t border-[#1a1a1a]/15 dark:border-[#c5a059]/20 py-6 text-center text-xs text-[#555] dark:text-[#a1a1aa] space-y-1 transition-colors duration-300">
         <div className="flex items-center justify-center gap-2 font-serif italic text-sm font-bold text-[#1a1a1a] dark:text-[#f4f4f5]">
